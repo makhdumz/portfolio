@@ -8,8 +8,7 @@ This project demonstrates end-to-end DevOps implementation including:
 - **Automated CI/CD Pipeline** using Azure DevOps
 - **Cloud Infrastructure** deployment on Azure
 - **Source Control Integration** with GitHub
-- **Automated Testing & Deployment** workflows
-- **Infrastructure as Code** practices
+- **Continuous Deployment** workflows
 
 ## 🔧 DevOps Stack
 
@@ -183,21 +182,21 @@ steps:
 
 ## 🚀 DevOps Best Practices Demonstrated
 
-- ✅ **Infrastructure as Code**: Pipeline configuration in YAML
-- ✅ **Automated Testing**: Ready for test integration
+- ✅ **Pipeline Configuration**: YAML-based pipeline setup
 - ✅ **Continuous Integration**: Automated builds on code changes
 - ✅ **Continuous Deployment**: Automated production deployments
 - ✅ **Environment Management**: Production environment automation
-- ✅ **Monitoring & Logging**: Application insights integration ready
+- ✅ **Source Control Integration**: GitHub repository integration
 
 ## 📈 Future DevOps Enhancements
 
-- [ ] **Multi-Environment Pipeline**: Dev, Staging, Production environments
 - [ ] **Automated Testing**: Unit, integration, and UI tests
 - [ ] **Infrastructure as Code**: ARM templates or Terraform
+- [ ] **Multi-Environment Pipeline**: Dev, Staging, Production environments
 - [ ] **Container Deployment**: Docker containerization
 - [ ] **Blue-Green Deployment**: Zero-downtime deployment strategy
 - [ ] **Monitoring Dashboard**: Custom Azure dashboards
+- [ ] **Application Insights**: Performance monitoring integration
 
 ## 🤝 Contributing to DevOps Project
 
