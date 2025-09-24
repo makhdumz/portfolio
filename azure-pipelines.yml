@@ -1,0 +1,23 @@
+trigger:
+- master   # Runs when you push to master branch
+
+pool:
+  vmImage: ubuntu-latest   # Or switch to self-hosted if hosted jobs blocked
+
+steps:
+# 📦 Zip your static HTML files
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+    replaceExistingArchive: true
+
+# 🚀 Deploy to Azure Web App
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'Dev-Portal'        # Your service connection name
+    appName: 'portfolio-demo'              # Your Azure Web App name
+    appType: 'webAppLinux'                 # 👈 Required now
+    package: '$(Build.ArtifactStagingDirectory)/*.zip'
