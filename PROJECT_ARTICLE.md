@@ -165,42 +165,55 @@ portfolio/
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### Pipeline Configuration Analysis
+### Complete Pipeline Configuration
 
-**Trigger Configuration**:
+**Full azure-pipelines.yml Configuration**:
 ```yaml
-trigger:
-- master   # Automatic deployment on master branch push
+trigger: 
+- master   # Runs when you push to master branch 
+
+pool: 
+  vmImage: ubuntu-latest   # Or switch to self-hosted if hosted jobs blocked 
+
+steps: 
+# 📦 Zip your static HTML files 
+- task: ArchiveFiles@2 
+  inputs: 
+    rootFolderOrFile: '$(Build.SourcesDirectory)' 
+    includeRootFolder: false 
+    archiveType: 'zip' 
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip' 
+    replaceExistingArchive: true 
+
+# 🚀 Deploy to Azure Web App 
+- task: AzureWebApp@1 
+  inputs: 
+    azureSubscription: 'Dev-Portal'        # Your service connection name 
+    appName: 'portfolio-demo'              # Your Azure Web App name 
+    appType: 'webAppLinux'                 # 👈 Required now 
+    package: '$(Build.ArtifactStagingDirectory)/*.zip' 
 ```
 
-**Build Environment**:
-```yaml
-pool:
-  vmImage: ubuntu-latest   # Linux-based build agent
-```
+### Pipeline Configuration Breakdown
 
-**Build Process**:
-```yaml
-# Archive static files
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Build.SourcesDirectory)'
-    includeRootFolder: false
-    archiveType: 'zip'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
-    replaceExistingArchive: true
-```
+**🎯 Trigger Configuration**:
+- Automatically triggers on pushes to the `master` branch
+- Ensures continuous deployment on code changes
 
-**Deployment Process**:
-```yaml
-# Deploy to Azure Web App
-- task: AzureWebApp@1
-  inputs:
-    azureSubscription: 'Dev-Portal'        # Service connection
-    appName: 'portfolio-demo'              # Target web app
-    appType: 'webAppLinux'                 # Linux-based app service
-    package: '$(Build.ArtifactStagingDirectory)/*.zip'
-```
+**🖥️ Build Environment**:
+- Uses `ubuntu-latest` Microsoft-hosted agent
+- Linux-based environment for consistent builds
+
+**📦 Archive Task (ArchiveFiles@2)**:
+- Packages all source files into a ZIP archive
+- Uses Build ID for unique artifact naming
+- Excludes root folder to maintain clean structure
+
+**🚀 Deployment Task (AzureWebApp@1)**:
+- Deploys to Azure App Service using 'Dev-Portal' service connection
+- Targets 'portfolio-demo' web app
+- Specifies 'webAppLinux' for Linux-based App Service
+- Uses wildcard pattern for ZIP package selection
 
 ### Pipeline Benefits
 1. **Automated Deployment**: Zero-touch deployment on code changes
@@ -415,10 +428,13 @@ font-src 'self' fonts.gstatic.com;
 
 ### Infrastructure Metrics
 - **Cloud Provider**: Microsoft Azure
-- **Deployment Method**: Azure DevOps Pipeline
-- **Hosting Type**: Azure App Service (Linux)
+- **Deployment Method**: Azure DevOps Pipeline (azure-pipelines.yml)
+- **Service Connection**: 'Dev-Portal' (Azure Resource Manager)
+- **Target App**: 'portfolio-demo' (Azure Web App)
+- **Hosting Type**: Azure App Service (Linux) - webAppLinux
+- **Build Agent**: ubuntu-latest (Microsoft-hosted)
+- **Deployment Package**: ZIP archive with Build ID versioning
 - **SSL Certificate**: Automatically managed
-- **Domain**: Custom domain ready
 
 ### Performance Targets
 - **Page Load Time**: < 2 seconds
