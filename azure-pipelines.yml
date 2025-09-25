@@ -1,21 +1,80 @@
 trigger:
-- master
+- main
 
 pool:
   vmImage: ubuntu-latest
 
-steps:
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Build.SourcesDirectory)'
-    includeRootFolder: false
-    archiveType: 'zip'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
-    replaceExistingArchive: true
+variables:
+  # These variables are your service principal credentials for Terraform to deploy to Azure
+  ARM_CLIENT_ID: $(servicePrincipalId)
+  ARM_CLIENT_SECRET: $(servicePrincipalKey)
+  ARM_SUBSCRIPTION_ID: $(subscriptionId)
+  ARM_TENANT_ID: $(tenantId)
 
-- task: AzureWebApp@1
-  inputs:
-    azureSubscription: 'Dev-Portal'
-    appName: 'portfolio-demo'
-    appType: 'webAppLinux'
-    package: '$(Build.ArtifactStagingDirectory)/*.zip'
+stages:
+# ------------------------------
+# Stage 1: Deploy Infrastructure
+# ------------------------------
+- stage: DeployInfrastructure
+  displayName: 'Deploy Terraform Infrastructure'
+  jobs:
+  - job: Terraform
+    displayName: 'Terraform Init & Apply'
+    steps:
+    - script: |
+        terraform init
+        terraform apply -auto-approve
+      displayName: 'Terraform Apply'
+      env:
+        ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+        ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+        ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+        ARM_TENANT_ID: $(ARM_TENANT_ID)
+
+# ------------------------------
+# Stage 2: Build & Push Docker Image
+# ------------------------------
+- stage: BuildAndPushImage
+  displayName: 'Build and Push Docker Image'
+  dependsOn: DeployInfrastructure
+  jobs:
+  - job: Docker
+    displayName: 'Build & Push Docker Image'
+    steps:
+    # 1️⃣ Login to ACR
+    - task: Docker@2
+      displayName: 'Login to ACR'
+      inputs:
+        command: login
+        containerRegistry: 'YourACRServiceConnection'   # Replace with your Docker/ACR service connection in DevOps
+
+    # 2️⃣ Build Docker image
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        command: build
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          $(Build.BuildId)
+          latest
+        repository: 'portfolio-site'
+
+    # 3️⃣ Push Docker image to ACR
+    - task: Docker@2
+      displayName: 'Push Docker Image to ACR'
+      inputs:
+        command: push
+        tags: |
+          $(Build.BuildId)
+          latest
+        repository: 'portfolio-site'
+
+    # 4️⃣ Optional: Restart Web App to pull latest image
+    - task: AzureCLI@2
+      displayName: 'Update Web App to latest image'
+      inputs:
+        azureSubscription: 'Dev-Portal'                # Your Azure service connection
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az webapp restart --name portfolio-demo --resource-group low
