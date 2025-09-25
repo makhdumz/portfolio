@@ -5,7 +5,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  # These variables are your service principal credentials for Terraform to deploy to Azure
+  # Service Principal credentials for Terraform
   ARM_CLIENT_ID: $(servicePrincipalId)
   ARM_CLIENT_SECRET: $(servicePrincipalKey)
   ARM_SUBSCRIPTION_ID: $(subscriptionId)
@@ -13,7 +13,7 @@ variables:
 
 stages:
 # ------------------------------
-# Stage 1: Deploy Infrastructure
+# Stage 1: Deploy Terraform Infrastructure
 # ------------------------------
 - stage: DeployInfrastructure
   displayName: 'Deploy Terraform Infrastructure'
@@ -46,7 +46,7 @@ stages:
       displayName: 'Login to ACR'
       inputs:
         command: login
-        containerRegistry: 'YourACRServiceConnection'   # Replace with your Docker/ACR service connection in DevOps
+        containerRegistry: 'YourACRServiceConnection'   # Replace with your Azure DevOps Docker/ACR service connection
 
     # 2️⃣ Build Docker image
     - task: Docker@2
@@ -69,9 +69,9 @@ stages:
           latest
         repository: 'portfolio-site'
 
-    # 4️⃣ Optional: Restart Web App to pull latest image
+    # 4️⃣ Restart Web App to pull latest image
     - task: AzureCLI@2
-      displayName: 'Update Web App to latest image'
+      displayName: 'Restart Web App'
       inputs:
         azureSubscription: 'Dev-Portal'                # Your Azure service connection
         scriptType: 'bash'
