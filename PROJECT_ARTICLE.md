@@ -15,12 +15,14 @@
 
 ## 🎯 Project Overview
 
-**Shehryar's Portfolio** is a modern, responsive web application that showcases professional skills as a Full Stack Developer & UI/UX Designer. This project demonstrates the complete software development lifecycle from initial development to production deployment on Microsoft Azure with automated CI/CD pipelines.
+**Shehryar's Portfolio** is a modern, responsive web application that showcases professional skills as a Full Stack Developer & UI/UX Designer. This project demonstrates the complete software development lifecycle from initial development to production deployment on Microsoft Azure with Infrastructure as Code (IaC) and fully automated CI/CD pipelines.
 
 ### 🌟 Key Highlights
 - **Modern Web Technologies**: HTML5, CSS3, Vanilla JavaScript
-- **Cloud-Native Deployment**: Azure App Service (Linux-based)
-- **Automated CI/CD**: Azure DevOps Pipeline
+- **Infrastructure as Code**: Terraform for automated Azure resource provisioning
+- **Cloud-Native Deployment**: Azure App Service (Linux-based) with automated scaling
+- **Automated CI/CD**: Azure DevOps Pipeline with GitHub integration
+- **DevOps Best Practices**: Version-controlled infrastructure, automated deployments
 - **Professional Design**: Responsive, accessible, and SEO-optimized
 - **Production Ready**: HTTPS, security headers, performance optimized
 
@@ -124,6 +126,121 @@ portfolio/
 
 ---
 
+## 🏗️ Infrastructure as Code (Terraform)
+
+### Overview
+This project implements Infrastructure as Code (IaC) using Terraform to automate the provisioning and management of Azure resources. This approach ensures consistent, repeatable, and version-controlled infrastructure deployments.
+
+### Terraform Configuration
+
+**Project Structure**:
+```
+terraform-portfolio/
+├── main.tf              # Main Terraform configuration
+├── terraform.tfstate    # State file (managed by Terraform)
+└── .terraform/          # Terraform working directory
+```
+
+**Complete main.tf Configuration**:
+```hcl
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~>3.0"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+
+# Use existing resource group
+data "azurerm_resource_group" "rg" {
+  name = "low"
+}
+
+# App Service Plan (Linux Free F1)
+resource "azurerm_service_plan" "plan" {
+  name                = "portfolio-plan"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  os_type             = "Linux"
+  sku_name            = "F1"
+}
+
+# Web App
+resource "azurerm_linux_web_app" "webapp" {
+  name                = "portfolio-demo"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  service_plan_id     = azurerm_service_plan.plan.id
+
+  site_config {
+    always_on = false   # Free plan cannot use always_on
+    application_stack {
+      php_version = "8.0"
+    }
+  }
+}
+```
+
+### Terraform Deployment Process
+
+**1. Initialize Terraform**:
+```bash
+mkdir ~/terraform-portfolio
+cd ~/terraform-portfolio
+terraform init
+```
+
+**2. Plan Infrastructure Changes**:
+```bash
+terraform plan
+```
+- Reviews proposed changes
+- Validates configuration
+- Shows resource creation plan
+
+**3. Apply Infrastructure**:
+```bash
+terraform apply
+# Type 'yes' when prompted
+```
+
+**4. Verify Deployment**:
+```bash
+terraform show
+terraform state list
+```
+
+### Infrastructure Components Created
+
+| Resource Type | Resource Name | Purpose |
+|---------------|---------------|---------|
+| **App Service Plan** | `portfolio-plan` | Hosting environment for web app |
+| **Linux Web App** | `portfolio-demo` | Main application hosting service |
+| **Resource Group** | `low` (existing) | Container for all resources |
+
+### Benefits of Infrastructure as Code
+
+1. **Version Control**: Infrastructure changes tracked in Git
+2. **Reproducibility**: Identical environments across dev/staging/prod
+3. **Automation**: No manual Azure portal clicks required
+4. **Documentation**: Infrastructure defined as code serves as documentation
+5. **Rollback Capability**: Easy to revert infrastructure changes
+6. **Team Collaboration**: Infrastructure changes reviewed via pull requests
+
+### Terraform State Management
+
+- **Local State**: Currently using local terraform.tfstate file
+- **Future Enhancement**: Migrate to Azure Storage for remote state
+- **State Locking**: Prevents concurrent modifications
+- **Backup**: State file should be backed up regularly
+
+---
+
 ## ☁️ Azure Cloud Infrastructure
 
 ### Azure App Service Configuration
@@ -157,12 +274,38 @@ portfolio/
 
 ## 🔄 CI/CD Pipeline Implementation
 
-### Pipeline Architecture
+### Enhanced Pipeline Architecture
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Source Code   │───▶│   Build Stage   │───▶│  Deploy Stage   │
-│   (GitHub)      │    │  (Azure DevOps) │    │ (Azure App Svc) │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   GitHub Repo   │───▶│   Azure DevOps  │───▶│   Build & Test  │───▶│  Azure App Svc  │
+│   (Source Code) │    │   (Pipeline)    │    │   (Artifacts)   │    │  (Production)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │                       │
+         │                       │                       │                       │
+    ┌────▼────┐             ┌────▼────┐             ┌────▼────┐             ┌────▼────┐
+    │ Trigger │             │ Service │             │ Archive │             │ Deploy  │
+    │ on Push │             │ Connect │             │ Files   │             │ & Verify│
+    └─────────┘             └─────────┘             └─────────┘             └─────────┘
+```
+
+### Service Connection Setup
+
+**1. Azure Resource Manager Connection**:
+```
+Connection Name: Dev-Portal
+Connection Type: Azure Resource Manager
+Authentication: Service Principal (automatic)
+Scope: Subscription level
+Resource Group: low
+Permissions: Contributor role
+```
+
+**2. GitHub Service Connection**:
+```
+Connection Name: GitHub-Portfolio
+Repository: makhdumz/portfolio
+Authentication: OAuth or Personal Access Token
+Permissions: Read repository, Read metadata
 ```
 
 ### Complete Pipeline Configuration
@@ -203,6 +346,92 @@ steps:
 **🖥️ Build Environment**:
 - Uses `ubuntu-latest` Microsoft-hosted agent
 - Linux-based environment for consistent builds
+
+### Complete Deployment Workflow
+
+**🔄 End-to-End DevOps Workflow Diagram**:
+
+```mermaid
+flowchart TD
+    A[👨‍💻 Developer] --> B[📝 Code Changes]
+    B --> C[🔄 Git Commit & Push]
+    C --> D[📂 GitHub Repository]
+    
+    D --> E[🚀 Azure DevOps Pipeline]
+    E --> F[🏗️ Build Agent Provisioned]
+    F --> G[📦 Archive Source Files]
+    G --> H[🔗 Service Connection Auth]
+    
+    I[⚙️ Terraform IaC] --> J[🏗️ Infrastructure Provisioning]
+    J --> K[📋 App Service Plan]
+    J --> L[🌐 Azure Web App]
+    
+    H --> M[🚀 Deploy to Azure App Service]
+    K --> M
+    L --> M
+    M --> N[✅ Production Website]
+    
+    N --> O[📊 Monitoring & Logs]
+    O --> P[🔄 Feedback Loop]
+    P --> A
+    
+    style A fill:#e1f5fe
+    style D fill:#f3e5f5
+    style E fill:#e8f5e8
+    style I fill:#fff3e0
+    style N fill:#e8f5e8
+```
+
+**🔧 Infrastructure & Deployment Flow**:
+
+```
+GitHub Repository → Azure DevOps → Build & Package → Azure App Service
+       ↓                ↓              ↓              ↓
+   Source Control → CI/CD Pipeline → Artifact → Live Website
+       ↓                ↓              ↓              ↓
+   Version Control → Automation → Deployment → Production
+       ↑                                              ↓
+   Terraform IaC ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←← Monitoring
+```
+
+**Step-by-Step Process**:
+
+1. **📝 Code Commit & Push**:
+   ```bash
+   git add .
+   git commit -m "Update portfolio content"
+   git push origin master
+   ```
+
+2. **🔄 Pipeline Trigger**:
+   - Azure DevOps detects push to master branch
+   - Pipeline automatically starts execution
+   - Build agent (ubuntu-latest) is provisioned
+
+3. **📦 Build & Package**:
+   - Source code is checked out from GitHub
+   - Static files are archived into deployment package
+   - Artifacts are stored in staging directory
+
+4. **🚀 Deployment**:
+   - Service connection authenticates with Azure
+   - Deployment package is uploaded to Azure App Service
+   - Application is deployed to production environment
+
+5. **✅ Verification**:
+   - Pipeline reports deployment status
+   - Application becomes available at production URL
+   - Logs are available for troubleshooting
+
+### Pipeline Variables & Configuration
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `Build.SourcesDirectory` | `/home/vsts/work/1/s` | Source code location |
+| `Build.ArtifactStagingDirectory` | `/home/vsts/work/1/a` | Artifact storage |
+| `Build.BuildId` | `20241225.1` | Unique build identifier |
+| `azureSubscription` | `Dev-Portal` | Service connection name |
+| `appName` | `portfolio-demo` | Target Azure Web App |
 
 **📦 Archive Task (ArchiveFiles@2)**:
 - Packages all source files into a ZIP archive
@@ -344,17 +573,29 @@ font-src 'self' fonts.gstatic.com;
 
 ### Azure Cloud Insights
 
-**Infrastructure as Code**:
-- Automated resource provisioning
-- Consistent environment configuration
-- Version-controlled infrastructure changes
-- Disaster recovery planning
+**Infrastructure as Code (IaC) Best Practices**:
+- **Terraform Implementation**: Complete infrastructure automation using declarative configuration
+- **Version Control**: All infrastructure code stored in Git with proper branching strategy
+- **State Management**: Secure Terraform state handling with proper backend configuration
+- **Resource Consistency**: Identical environments across dev/staging/production
+- **Automated Provisioning**: Zero-click infrastructure deployment and updates
+- **Cost Optimization**: Resource tagging and automated scaling policies
+- **Security by Design**: Infrastructure security policies enforced through code
 
-**DevOps Culture**:
-- Continuous integration/continuous deployment
-- Automated testing integration
-- Monitoring and alerting setup
-- Performance optimization cycles
+**DevOps Culture & Automation**:
+- **CI/CD Pipeline Excellence**: Fully automated deployment from code commit to production
+- **Service Connections**: Secure Azure Resource Manager integration with DevOps
+- **Build Automation**: Consistent artifact creation with versioning and archiving
+- **Deployment Strategies**: Blue-green deployments with zero-downtime releases
+- **Monitoring Integration**: Application Insights and Azure Monitor setup
+- **Rollback Capabilities**: Automated rollback procedures for failed deployments
+- **Pipeline as Code**: YAML-based pipeline configuration with version control
+
+**Cloud-Native Architecture**:
+- **Microservices Ready**: Scalable architecture supporting future service decomposition
+- **Auto-scaling**: Azure App Service automatic scaling based on demand
+- **High Availability**: Multi-region deployment capabilities with load balancing
+- **Security Compliance**: Azure Security Center integration and compliance monitoring
 
 ### Project Management
 
@@ -427,14 +668,29 @@ font-src 'self' fonts.gstatic.com;
 - **Git Commits**: 10+ commits with meaningful messages
 
 ### Infrastructure Metrics
+
+**Infrastructure as Code (Terraform)**:
+- **IaC Tool**: Terraform v3.0+ with AzureRM provider
+- **Configuration File**: main.tf (version-controlled)
+- **Resource Group**: 'low' (existing, referenced via data source)
+- **App Service Plan**: 'portfolio-plan' (Linux F1 SKU)
+- **Web App**: 'portfolio-demo' (Linux-based with PHP 8.0 stack)
+- **State Management**: Local terraform.tfstate file
+- **Provisioning Time**: ~2-3 minutes for complete infrastructure
+
+**CI/CD Pipeline Metrics**:
 - **Cloud Provider**: Microsoft Azure
 - **Deployment Method**: Azure DevOps Pipeline (azure-pipelines.yml)
-- **Service Connection**: 'Dev-Portal' (Azure Resource Manager)
-- **Target App**: 'portfolio-demo' (Azure Web App)
+- **Service Connections**: 
+  - 'Dev-Portal' (Azure Resource Manager)
+  - 'GitHub-Portfolio' (Source control)
+- **Target App**: 'portfolio-demo' (Terraform-provisioned)
 - **Hosting Type**: Azure App Service (Linux) - webAppLinux
 - **Build Agent**: ubuntu-latest (Microsoft-hosted)
 - **Deployment Package**: ZIP archive with Build ID versioning
-- **SSL Certificate**: Automatically managed
+- **Pipeline Trigger**: Automatic on master branch push
+- **Average Deployment Time**: 3-5 minutes
+- **SSL Certificate**: Automatically managed by Azure
 
 ### Performance Targets
 - **Page Load Time**: < 2 seconds
@@ -470,10 +726,43 @@ The project serves as an excellent example of how to build, deploy, and maintain
 - **Pipeline**: azure-pipelines.yml
 
 **Technologies Used**:
-- Frontend: HTML5, CSS3, JavaScript
-- Cloud: Microsoft Azure
-- CI/CD: Azure DevOps
-- Version Control: Git & GitHub
+
+**Frontend Development**:
+- HTML5 (Semantic markup, accessibility features)
+- CSS3 (Grid, Flexbox, custom properties, animations)
+- JavaScript ES6+ (DOM manipulation, event handling, modern syntax)
+
+**Infrastructure as Code (IaC)**:
+- Terraform v3.0+ (Infrastructure automation and provisioning)
+- HashiCorp Configuration Language (HCL)
+- AzureRM Provider (Azure resource management)
+
+**Cloud Platform & Services**:
+- Microsoft Azure (Primary cloud platform)
+- Azure App Service (Linux-based web hosting)
+- Azure App Service Plan (F1 SKU for cost optimization)
+- Azure Resource Manager (Infrastructure management)
+- Azure DevOps (CI/CD platform and project management)
+
+**DevOps & Automation**:
+- Azure Pipelines (YAML-based CI/CD)
+- Service Connections (Secure Azure integration)
+- Build Agents (Ubuntu-latest Microsoft-hosted)
+- Artifact Management (ZIP packaging with versioning)
+
+**Version Control & Collaboration**:
+- Git (Distributed version control)
+- GitHub (Source code hosting and collaboration)
+- GitHub Integration (Automated pipeline triggers)
+
+**Development Tools**:
+- Visual Studio Code (Primary IDE)
+- Azure CLI (Command-line Azure management)
+- Terraform CLI (Infrastructure provisioning)
+- PowerShell (Windows automation and scripting)
+
+---
+*Last updated: September 25, 2025*
 
 ---
 
