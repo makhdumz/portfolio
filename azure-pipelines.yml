@@ -41,12 +41,14 @@ stages:
   - job: Docker
     displayName: 'Build, Push and Deploy'
     steps:
+    # Log in to ACR using your Docker Registry service connection
     - task: Docker@2
       displayName: 'Login to ACR'
       inputs:
         command: 'login'
-        containerRegistry: 'Docker Reg' # Your Docker Registry service connection
+        containerRegistry: 'Docker Reg'   # must match service connection name exactly
 
+    # Build and push image
     - task: Docker@2
       displayName: 'Build and Push Image to ACR'
       inputs:
@@ -55,9 +57,10 @@ stages:
         dockerfile: '**/Dockerfile'
         tags: 'latest'
 
+    # Deploy to Azure Web App (Container)
     - task: AzureWebAppContainer@1
       displayName: 'Deploy Container to App Service'
       inputs:
-        azureSubscription: 'Dev-Portal' # Your Azure service connection
+        azureSubscription: 'Dev Portal'   # must match service connection name exactly
         appName: 'portfolio-demo'
         imageName: 'portfolioregistrytf020qrb.azurecr.io/portfolio-site:latest'
