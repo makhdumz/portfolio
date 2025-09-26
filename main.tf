@@ -1,5 +1,3 @@
-# This is the final, correct version of your main.tf file
-
 terraform {
   required_providers {
     azurerm = {
@@ -43,12 +41,14 @@ resource "azurerm_linux_web_app" "webapp" {
   resource_group_name = data.azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.plan.id
 
-  # This block is empty to fix the "always_on" error with the Free plan
-  site_config {}
+  site_config {
+    always_on = false
+  }
 
   app_settings = {
-    "DOCKER_REGISTRY_SERVER_URL"      = "https://{azurerm_container_registry.acr.login_server}"
+    "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.acr.login_server}"
     "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
     "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
+    "WEBSITES_PORT"                   = "80"
   }
 }
