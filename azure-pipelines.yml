@@ -11,6 +11,16 @@ stages:
   - job: Terraform
     displayName: 'Run Terraform Apply'
     steps:
+    # Install Terraform manually
+    - script: |
+        echo "Installing Terraform..."
+        wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
+        unzip terraform_1.6.0_linux_amd64.zip
+        sudo mv terraform /usr/local/bin/
+        terraform --version
+      displayName: 'Install Terraform'
+
+    # Terraform Init and Apply
     - script: |
         terraform init
         terraform apply -auto-approve
