@@ -1,3 +1,5 @@
+# This is the full and final pipeline configuration.
+
 trigger:
 - main
 
@@ -5,62 +7,60 @@ pool:
   vmImage: ubuntu-latest
 
 stages:
+# STAGE 1: DEPLOY INFRASTRUCTURE
+# This stage uses Terraform to build your resources in Azure.
 - stage: DeployInfrastructure
   displayName: 'Deploy Terraform Infrastructure'
   jobs:
   - job: Terraform
     displayName: 'Run Terraform Apply'
     steps:
-
-    # Step 1: Install Terraform
-    - script: |
-        echo "Installing Terraform..."
-        wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
-        unzip terraform_1.6.0_linux_amd64.zip
-        sudo mv terraform /usr/local/bin/
-        terraform --version
+    # Installs Terraform on the build agent
+    - task: TerraformInstaller@1
       displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: 'latest'
 
-    # Step 2: Export ARM_* variables and run Terraform
+    # Runs Terraform commands with secure credentials
     - script: |
-        echo "Exporting Azure credentials..."
-        export ARM_CLIENT_ID=$(servicePrincipalId)
-        export ARM_CLIENT_SECRET=$(servicePrincipalKey)
-        export ARM_SUBSCRIPTION_ID=$(subscriptionId)
-        export ARM_TENANT_ID=$(tenantId)
-
-        echo "Initializing Terraform..."
         terraform init
-
-        echo "Applying Terraform..."
         terraform apply -auto-approve
       displayName: 'Terraform Init and Apply'
+      env:
+        ARM_CLIENT_ID: $(servicePrincipalId)
+        ARM_CLIENT_SECRET: $(servicePrincipalKey)
+        ARM_SUBSCRIPTION_ID: $(subscriptionId)
+        ARM_TENANT_ID: $(tenantId)
 
+# STAGE 2: BUILD, PUSH, AND DEPLOY CONTAINER
+# This stage builds your Docker image and deploys it to the Web App.
 - stage: BuildPushAndDeploy
-  displayName: 'Build, Push, and Deploy Docker Image'
+  displayName: 'Build, Push, and Deploy Image'
   dependsOn: DeployInfrastructure
   jobs:
   - job: Docker
     displayName: 'Build, Push and Deploy'
     steps:
-
+    # Login to your Azure Container Registry
     - task: Docker@2
       displayName: 'Login to ACR'
       inputs:
         command: 'login'
-        containerRegistry: 'Docker Reg' # Replace with your service connection
+        containerRegistry: 'Docker Reg' # Your Docker Registry service connection
 
+    # Build the image and push it to your registry
     - task: Docker@2
-      displayName: 'Build and Push Image'
+      displayName: 'Build and Push Image to ACR'
       inputs:
         command: 'buildAndPush'
         repository: 'portfolio-site'
         dockerfile: '**/Dockerfile'
         tags: 'latest'
 
+    # Tell the Web App to deploy the new container image
     - task: AzureWebAppContainer@1
       displayName: 'Deploy Container to App Service'
       inputs:
-        azureSubscription: 'Dev-Portal' # Your Azure DevOps service connection
+        azureSubscription: 'Dev-Portal' # Your Azure service connection
         appName: 'portfolio-demo'
         imageName: 'portfolioregistrytf020qrb.azurecr.io/portfolio-site:latest'
