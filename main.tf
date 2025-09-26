@@ -9,7 +9,7 @@ terraform {
 
 provider "azurerm" {
   features {}
-  # Authentication handled via Azure CLI login
+  # Authentication handled via Azure CLI or Service Principal in pipeline
 }
 
 # Use existing Resource Group named "low"
@@ -23,10 +23,10 @@ resource "azurerm_service_plan" "plan" {
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
   os_type             = "Linux"
-  sku_name            = "F1"
+  sku_name            = "F1" # Free Tier
 }
 
-# Azure Container Registry
+# Azure Container Registry (ACR)
 resource "azurerm_container_registry" "acr" {
   name                = "portfolioregistrytf020qrb"
   resource_group_name = data.azurerm_resource_group.rg.name
@@ -42,11 +42,14 @@ resource "azurerm_linux_web_app" "webapp" {
   resource_group_name = data.azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.plan.id
 
-  site_config {}
+  site_config {
+    # Leave empty or configure startup commands if needed
+  }
 
   app_settings = {
     "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.acr.login_server}"
     "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
     "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
+    "WEBSITES_PORT"                   = "80" # important for Docker apps
   }
 }
