@@ -1,84 +1,46 @@
 trigger:
-- main
+- master
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
 variables:
-  # Terraform Azure authentication
-  ARM_CLIENT_ID: $(servicePrincipalId)
-  ARM_CLIENT_SECRET: $(servicePrincipalKey)
-  ARM_SUBSCRIPTION_ID: $(subscriptionId)
-  ARM_TENANT_ID: $(tenantId)
+  imageName: 'portfolio-site'
+  resourceGroup: 'portfolio-rg'            # 👈 replace with your resource group name
+  webAppName: 'portfolio-demo'             # 👈 your web app name from Terraform
+  acrLoginServer: 'portfolioregistrytf020qrb.azurecr.io'   # 👈 from your Terraform output
 
-stages:
-# ------------------------------
-# Stage 1: Deploy Infrastructure
-# ------------------------------
-- stage: DeployInfrastructure
-  displayName: 'Deploy Terraform Infrastructure'
-  jobs:
-  - job: Terraform
-    displayName: 'Terraform Init & Apply'
-    steps:
-    - checkout: self
-    - script: |
-        cd terraform-portfolio
-        terraform init
-        terraform apply -auto-approve
-      displayName: 'Terraform Apply'
-      env:
-        ARM_CLIENT_ID: $(ARM_CLIENT_ID)
-        ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
-        ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
-        ARM_TENANT_ID: $(ARM_TENANT_ID)
+steps:
+# Step 1: Docker login to ACR
+- task: Docker@2
+  displayName: 'Login to ACR'
+  inputs:
+    command: login
+    containerRegistry: 'Docker Reg'   # 👈 must match your service connection name
 
-# ------------------------------
-# Stage 2: Build & Push Docker Image
-# ------------------------------
-- stage: BuildAndPushImage
-  displayName: 'Build and Push Docker Image'
-  dependsOn: DeployInfrastructure
-  jobs:
-  - job: Docker
-    displayName: 'Build & Push Docker Image'
-    steps:
-    - checkout: self
+# Step 2: Build & Push image to ACR
+- task: Docker@2
+  displayName: 'Build and Push Docker image'
+  inputs:
+    command: buildAndPush
+    repository: '$(imageName)'
+    dockerfile: '**/Dockerfile'
+    containerRegistry: 'Docker Reg'
+    tags: |
+      $(Build.BuildId)
+      latest
 
-    # 1️⃣ Login to ACR
-    - task: Docker@2
-      displayName: 'Login to ACR'
-      inputs:
-        command: login
-        containerRegistry: 'Dev-Portal'   # ✅ use your created service connection
-
-    # 2️⃣ Build Docker image
-    - task: Docker@2
-      displayName: 'Build Docker Image'
-      inputs:
-        command: build
-        Dockerfile: '**/Dockerfile'
-        repository: 'portfolio-site'
-        tags: |
-          $(Build.BuildId)
-          latest
-
-    # 3️⃣ Push Docker image to ACR
-    - task: Docker@2
-      displayName: 'Push Docker Image to ACR'
-      inputs:
-        command: push
-        repository: 'portfolio-site'
-        tags: |
-          $(Build.BuildId)
-          latest
-
-    # 4️⃣ Restart Web App to pull latest image
-    - task: AzureCLI@2
-      displayName: 'Restart Web App'
-      inputs:
-        azureSubscription: 'Dev-Portal'   # ✅ same service connection
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az webapp restart --name portfolio-demo --resource-group low
+# Step 3: Update Azure Web App to use new image
+- task: AzureCLI@2
+  displayName: 'Update Web App container settings'
+  inputs:
+    azureSubscription: 'Dev-Portal'   # 👈 your AzureRM service connection
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      echo "Updating Web App to use latest Docker image..."
+      az webapp config container set \
+        --resource-group $(resourceGroup) \
+        --name $(webAppName) \
+        --docker-custom-image-name $(acrLoginServer)/$(imageName):latest \
+        --docker-registry-server-url https://$(acrLoginServer)
