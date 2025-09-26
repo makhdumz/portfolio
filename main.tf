@@ -2,15 +2,14 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~>3.0"
     }
   }
 }
 
 provider "azurerm" {
   features {}
-  # Credentials are passed via environment variables:
-  # ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
+  # Authentication is via ARM_* environment variables from DevOps
 }
 
 # Use existing Resource Group named "low"
