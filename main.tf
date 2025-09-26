@@ -9,7 +9,7 @@ terraform {
 
 provider "azurerm" {
   features {}
-  # Authentication is via ARM_* environment variables from DevOps
+  # Authentication handled via Azure CLI login
 }
 
 # Use existing Resource Group named "low"
