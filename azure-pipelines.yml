@@ -30,7 +30,7 @@ stages:
         command: 'init'
         backendServiceArm: 'Dev-Portal' # Your main Azure Service Connection
         backendAzureRmResourceGroupName: 'low' # The RG where the state is stored
-        backendAzureRmStorageAccountName: 'youruniquestorageaccountname' # <-- CHANGE THIS
+        backendAzureRmStorageAccountName: 'youruniquestorageaccountname' # <-- IMPORTANT: CHANGE THIS
         backendAzureRmContainerName: 'tfstate' # The container name for the state file
         backendAzureRmKey: 'portfolio.tfstate' # The name of the state file
 
