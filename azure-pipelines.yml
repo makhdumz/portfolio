@@ -11,7 +11,7 @@ stages:
   - job: Terraform
     displayName: 'Run Terraform Apply'
     steps:
-    # Install Terraform manually
+    # Install Terraform on the agent
     - script: |
         echo "Installing Terraform..."
         wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
@@ -20,9 +20,12 @@ stages:
         terraform --version
       displayName: 'Install Terraform'
 
-    # Terraform Init and Apply
+    # Terraform Init and Apply using Service Principal
     - script: |
+        echo "Initializing Terraform..."
         terraform init
+
+        echo "Applying Terraform..."
         terraform apply -auto-approve
       displayName: 'Terraform Init and Apply'
       env:
