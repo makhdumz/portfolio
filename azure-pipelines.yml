@@ -5,7 +5,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  # Service Principal credentials for Terraform
+  # Terraform Azure authentication
   ARM_CLIENT_ID: $(servicePrincipalId)
   ARM_CLIENT_SECRET: $(servicePrincipalKey)
   ARM_SUBSCRIPTION_ID: $(subscriptionId)
@@ -13,7 +13,7 @@ variables:
 
 stages:
 # ------------------------------
-# Stage 1: Deploy Terraform Infrastructure
+# Stage 1: Deploy Infrastructure
 # ------------------------------
 - stage: DeployInfrastructure
   displayName: 'Deploy Terraform Infrastructure'
@@ -21,7 +21,9 @@ stages:
   - job: Terraform
     displayName: 'Terraform Init & Apply'
     steps:
+    - checkout: self
     - script: |
+        cd terraform-portfolio
         terraform init
         terraform apply -auto-approve
       displayName: 'Terraform Apply'
@@ -41,12 +43,14 @@ stages:
   - job: Docker
     displayName: 'Build & Push Docker Image'
     steps:
+    - checkout: self
+
     # 1️⃣ Login to ACR
     - task: Docker@2
       displayName: 'Login to ACR'
       inputs:
         command: login
-        containerRegistry: 'YourACRServiceConnection'   # Replace with your Azure DevOps Docker/ACR service connection
+        containerRegistry: 'Dev-Portal'   # ✅ use your created service connection
 
     # 2️⃣ Build Docker image
     - task: Docker@2
@@ -54,26 +58,26 @@ stages:
       inputs:
         command: build
         Dockerfile: '**/Dockerfile'
+        repository: 'portfolio-site'
         tags: |
           $(Build.BuildId)
           latest
-        repository: 'portfolio-site'
 
     # 3️⃣ Push Docker image to ACR
     - task: Docker@2
       displayName: 'Push Docker Image to ACR'
       inputs:
         command: push
+        repository: 'portfolio-site'
         tags: |
           $(Build.BuildId)
           latest
-        repository: 'portfolio-site'
 
     # 4️⃣ Restart Web App to pull latest image
     - task: AzureCLI@2
       displayName: 'Restart Web App'
       inputs:
-        azureSubscription: 'Dev-Portal'                # Your Azure service connection
+        azureSubscription: 'Dev-Portal'   # ✅ same service connection
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
