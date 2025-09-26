@@ -1,61 +1,51 @@
-trigger:
-- main
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~>3.0"
+    }
+  }
+}
 
-pool:
-  vmImage: ubuntu-latest
+provider "azurerm" {
+  features {}
+}
 
-stages:
-# STAGE 1: DEPLOY INFRASTRUCTURE
-# This stage runs your Terraform code.
-- stage: DeployInfrastructure
-  displayName: 'Deploy Terraform Infrastructure'
-  jobs:
-  - job: Terraform
-    displayName: 'Run Terraform Apply'
-    steps:
-    - script: |
-        terraform init
-        terraform apply -auto-approve
-      displayName: 'Terraform Init and Apply'
-      env:
-        ARM_CLIENT_ID: $(servicePrincipalId)
-        ARM_CLIENT_SECRET: $(servicePrincipalKey)
-        ARM_SUBSCRIPTION_ID: $(subscriptionId)
-        ARM_TENANT_ID: $(tenantId)
+# Use existing Resource Group named "low"
+data "azurerm_resource_group" "rg" {
+  name = "low"
+}
 
-# STAGE 2: BUILD, PUSH, AND DEPLOY CONTAINER
-# This stage builds your Docker image and deploys it.
-- stage: BuildPushAndDeploy
-  displayName: 'Build, Push, and Deploy Image'
-  dependsOn: DeployInfrastructure
-  jobs:
-  - job: Docker
-    displayName: 'Build, Push and Deploy'
-    steps:
-    # Step 2.1: Login to your container registry
-    - task: Docker@2
-      displayName: 'Login to ACR'
-      inputs:
-        command: 'login'
-        # This is your Docker Registry service connection in Azure DevOps
-        containerRegistry: 'YourAzureContainerRegistryServiceConnection' 
+# App Service Plan (Linux Free F1)
+resource "azurerm_service_plan" "plan" {
+  name                = "portfolio-plan"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  os_type             = "Linux"
+  sku_name            = "F1"
+}
 
-    # Step 2.2: Build the image and push it to the registry
-    - task: Docker@2
-      displayName: 'Build and Push Image to ACR'
-      inputs:
-        command: 'buildAndPush'
-        repository: 'portfolio-site' # This will be the image name
-        dockerfile: '**/Dockerfile'
-        tags: 'latest'
+# Azure Container Registry
+resource "azurerm_container_registry" "acr" {
+  name                = "portfolioregistrytf020qrb"
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
+  sku                 = "Basic"
+  admin_enabled       = true
+}
 
-    # Step 2.3: Deploy the new image to your Web App
-    - task: AzureWebAppContainer@1
-      displayName: 'Deploy Container to App Service'
-      inputs:
-        # This is your main Azure service connection
-        azureSubscription: 'Dev-Portal'
-        # The name of the Web App defined in your main.tf
-        appName: 'portfolio-demo'
-        # The full name of the image to deploy
-        imageName: 'portfolioregistrytf020qrb.azurecr.io/portfolio-site:latest'
+# Linux Web App running Docker container
+resource "azurerm_linux_web_app" "webapp" {
+  name                = "portfolio-demo"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  service_plan_id     = azurerm_service_plan.plan.id
+
+  site_config {}
+
+  app_settings = {
+    "DOCKER_REGISTRY_SERVER_URL"      = "https://{azurerm_container_registry.acr.login_server}"
+    "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
+    "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
+  }
+}
