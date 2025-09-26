@@ -20,21 +20,19 @@ stages:
         terraform --version
       displayName: 'Install Terraform'
 
-    # Step 2: Login Azure CLI and run Terraform
+    # Step 2: Terraform init and apply
     - script: |
-        echo "Logging in to Azure CLI..."
-        az login --service-principal \
-          -u $(servicePrincipalId) \
-          -p $(servicePrincipalKey) \
-          --tenant $(tenantId)
-
         echo "Initializing Terraform..."
-        cd Terraform
         terraform init
 
         echo "Applying Terraform..."
         terraform apply -auto-approve
-      displayName: 'Login Azure and Apply Terraform'
+      displayName: 'Terraform Init and Apply'
+      env:
+        ARM_CLIENT_ID: $(servicePrincipalId)
+        ARM_CLIENT_SECRET: $(servicePrincipalKey)
+        ARM_SUBSCRIPTION_ID: $(subscriptionId)
+        ARM_TENANT_ID: $(tenantId)
 
 - stage: BuildPushAndDeploy
   displayName: 'Build, Push, and Deploy Docker Image'
