@@ -11,6 +11,7 @@ stages:
   - job: Terraform
     displayName: 'Run Terraform Apply'
     steps:
+
     # Step 1: Install Terraform
     - script: |
         echo "Installing Terraform..."
@@ -20,19 +21,20 @@ stages:
         terraform --version
       displayName: 'Install Terraform'
 
-    # Step 2: Terraform init and apply
+    # Step 2: Export ARM_* variables and run Terraform
     - script: |
+        echo "Exporting Azure credentials..."
+        export ARM_CLIENT_ID=$(servicePrincipalId)
+        export ARM_CLIENT_SECRET=$(servicePrincipalKey)
+        export ARM_SUBSCRIPTION_ID=$(subscriptionId)
+        export ARM_TENANT_ID=$(tenantId)
+
         echo "Initializing Terraform..."
         terraform init
 
         echo "Applying Terraform..."
         terraform apply -auto-approve
       displayName: 'Terraform Init and Apply'
-      env:
-        ARM_CLIENT_ID: $(servicePrincipalId)
-        ARM_CLIENT_SECRET: $(servicePrincipalKey)
-        ARM_SUBSCRIPTION_ID: $(subscriptionId)
-        ARM_TENANT_ID: $(tenantId)
 
 - stage: BuildPushAndDeploy
   displayName: 'Build, Push, and Deploy Docker Image'
@@ -41,11 +43,12 @@ stages:
   - job: Docker
     displayName: 'Build, Push and Deploy'
     steps:
+
     - task: Docker@2
       displayName: 'Login to ACR'
       inputs:
         command: 'login'
-        containerRegistry: 'Docker Reg' # Replace with your Azure DevOps service connection
+        containerRegistry: 'Docker Reg' # Replace with your service connection
 
     - task: Docker@2
       displayName: 'Build and Push Image'
