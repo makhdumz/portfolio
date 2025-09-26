@@ -2,13 +2,15 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~>3.0"
+      version = "~> 3.0"
     }
   }
 }
 
 provider "azurerm" {
   features {}
+  # Credentials are passed via environment variables:
+  # ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
 }
 
 # Use existing Resource Group named "low"
@@ -44,7 +46,7 @@ resource "azurerm_linux_web_app" "webapp" {
   site_config {}
 
   app_settings = {
-    "DOCKER_REGISTRY_SERVER_URL"      = "https://{azurerm_container_registry.acr.login_server}"
+    "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.acr.login_server}"
     "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
     "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
   }
