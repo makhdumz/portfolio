@@ -11,7 +11,7 @@ stages:
   - job: Terraform
     displayName: 'Run Terraform Apply'
     steps:
-    # Install Terraform on the agent
+    # Step 1: Install Terraform
     - script: |
         echo "Installing Terraform..."
         wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
@@ -20,14 +20,21 @@ stages:
         terraform --version
       displayName: 'Install Terraform'
 
-    # Terraform Init and Apply using Service Principal
+    # Step 2: Login Azure and run Terraform
     - script: |
+        echo "Logging in to Azure CLI..."
+        az login --service-principal \
+          -u $(servicePrincipalId) \
+          -p $(servicePrincipalKey) \
+          --tenant $(tenantId)
+
         echo "Initializing Terraform..."
+        cd Terraform
         terraform init
 
         echo "Applying Terraform..."
         terraform apply -auto-approve
-      displayName: 'Terraform Init and Apply'
+      displayName: 'Login Azure and Apply Terraform'
       env:
         ARM_CLIENT_ID: $(servicePrincipalId)
         ARM_CLIENT_SECRET: $(servicePrincipalKey)
@@ -35,32 +42,29 @@ stages:
         ARM_TENANT_ID: $(tenantId)
 
 - stage: BuildPushAndDeploy
-  displayName: 'Build, Push, and Deploy Image'
+  displayName: 'Build, Push, and Deploy Docker Image'
   dependsOn: DeployInfrastructure
   jobs:
   - job: Docker
     displayName: 'Build, Push and Deploy'
     steps:
-    # Log in to ACR using your Docker Registry service connection
     - task: Docker@2
       displayName: 'Login to ACR'
       inputs:
         command: 'login'
-        containerRegistry: 'Docker Reg'   # must match service connection name exactly
+        containerRegistry: 'Docker Reg' # Replace with your Azure DevOps service connection
 
-    # Build and push image
     - task: Docker@2
-      displayName: 'Build and Push Image to ACR'
+      displayName: 'Build and Push Image'
       inputs:
         command: 'buildAndPush'
         repository: 'portfolio-site'
         dockerfile: '**/Dockerfile'
         tags: 'latest'
 
-    # Deploy to Azure Web App (Container)
     - task: AzureWebAppContainer@1
       displayName: 'Deploy Container to App Service'
       inputs:
-        azureSubscription: 'Dev Portal'   # must match service connection name exactly
+        azureSubscription: 'Dev-Portal' # Your Azure DevOps service connection
         appName: 'portfolio-demo'
         imageName: 'portfolioregistrytf020qrb.azurecr.io/portfolio-site:latest'
