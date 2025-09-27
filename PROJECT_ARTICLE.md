@@ -7,9 +7,7 @@
 4. [Azure Cloud Infrastructure](#azure-cloud-infrastructure)
 5. [CI/CD Pipeline Implementation](#cicd-pipeline-implementation)
 6. [Technical Deep Dive](#technical-deep-dive)
-7. [Performance & Security](#performance--security)
-8. [Lessons Learned](#lessons-learned)
-9. [Future Enhancements](#future-enhancements)
+7. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -55,7 +53,6 @@
 │  ┌─────────────────────────────────────┐ │
 │  │        Azure App Service            │ │
 │  │  • Linux-based hosting             │ │
-│  │  • Auto-scaling capabilities       │ │
 │  │  • Custom domain support           │ │
 │  │  • SSL/TLS certificates            │ │
 │  └─────────────────────────────────────┘ │
@@ -248,15 +245,10 @@ terraform state list
 **Service Details**:
 - **Platform**: Linux-based App Service
 - **Runtime**: Static HTML/CSS/JS hosting
-- **Scaling**: Auto-scaling enabled
-- **Security**: HTTPS enforced, security headers configured
 
 **Benefits of Azure App Service**:
 1. **Managed Infrastructure**: No server management required
-2. **Built-in Security**: SSL certificates, security headers
-3. **Scalability**: Automatic scaling based on demand
-4. **Integration**: Seamless integration with Azure DevOps
-5. **Monitoring**: Built-in application insights
+2. **Integration**: Seamless integration with Azure DevOps
 
 ### Service Connections
 
@@ -511,107 +503,9 @@ GitHub Repository → Azure DevOps → Build & Package → Azure App Service
 
 ---
 
-## 🔒 Performance & Security
 
-### Security Measures
 
-**HTTPS Implementation**:
-- SSL/TLS certificates automatically managed by Azure
-- HTTP to HTTPS redirects
-- Secure cookie settings
-- HSTS headers implementation
 
-**Content Security Policy**:
-```http
-Content-Security-Policy: default-src 'self'; 
-script-src 'self' 'unsafe-inline'; 
-style-src 'self' 'unsafe-inline' fonts.googleapis.com; 
-font-src 'self' fonts.gstatic.com;
-```
-
-**Security Headers**:
-- X-Content-Type-Options: nosniff
-- X-Frame-Options: DENY
-- X-XSS-Protection: 1; mode=block
-- Referrer-Policy: strict-origin-when-cross-origin
-
-### Performance Metrics
-
-**Lighthouse Scores** (Target):
-- Performance: 95+
-- Accessibility: 100
-- Best Practices: 100
-- SEO: 100
-
-**Core Web Vitals**:
-- Largest Contentful Paint (LCP): < 2.5s
-- First Input Delay (FID): < 100ms
-- Cumulative Layout Shift (CLS): < 0.1
-
-**Loading Performance**:
-- Time to First Byte (TTFB): < 200ms
-- First Contentful Paint (FCP): < 1.8s
-- Time to Interactive (TTI): < 3.8s
-
----
-
-## 📚 Lessons Learned
-
-### Development Best Practices
-
-**Code Organization**:
-- Consistent naming conventions
-- Modular CSS architecture
-- Semantic HTML structure
-- Progressive enhancement approach
-
-**Version Control**:
-- Meaningful commit messages
-- Feature branch workflow
-- Proper merge conflict resolution
-- Regular repository maintenance
-
-### Azure Cloud Insights
-
-**Infrastructure as Code (IaC) Best Practices**:
-- **Terraform Implementation**: Complete infrastructure automation using declarative configuration
-- **Version Control**: All infrastructure code stored in Git with proper branching strategy
-- **State Management**: Secure Terraform state handling with proper backend configuration
-- **Resource Consistency**: Identical environments across dev/staging/production
-- **Automated Provisioning**: Zero-click infrastructure deployment and updates
-- **Cost Optimization**: Resource tagging and automated scaling policies
-- **Security by Design**: Infrastructure security policies enforced through code
-
-**DevOps Culture & Automation**:
-- **CI/CD Pipeline Excellence**: Fully automated deployment from code commit to production
-- **Service Connections**: Secure Azure Resource Manager integration with DevOps
-- **Build Automation**: Consistent artifact creation with versioning and archiving
-- **Deployment Strategies**: Blue-green deployments with zero-downtime releases
-- **Monitoring Integration**: Application Insights and Azure Monitor setup
-- **Rollback Capabilities**: Automated rollback procedures for failed deployments
-- **Pipeline as Code**: YAML-based pipeline configuration with version control
-
-**Cloud-Native Architecture**:
-- **Microservices Ready**: Scalable architecture supporting future service decomposition
-- **Auto-scaling**: Azure App Service automatic scaling based on demand
-- **High Availability**: Multi-region deployment capabilities with load balancing
-- **Security Compliance**: Azure Security Center integration and compliance monitoring
-
-### Project Management
-
-**Documentation Importance**:
-- Comprehensive README files
-- Inline code comments
-- Architecture decision records
-- Deployment guides
-
-**Collaboration Tools**:
-- Git for version control
-- Azure DevOps for project management
-- GitHub for code hosting
-- Azure for cloud infrastructure
-
----
 
 ## 🚀 Future Enhancements
 
@@ -637,11 +531,7 @@ font-src 'self' fonts.gstatic.com;
 - Advanced project filtering and search
 - Integration with external APIs (GitHub, LinkedIn)
 
-**Analytics & Monitoring**:
-- Google Analytics 4 integration
-- Azure Application Insights setup
-- Performance monitoring dashboard
-- User behavior tracking
+
 
 ### Long-term Vision (6+ months)
 
@@ -655,7 +545,6 @@ font-src 'self' fonts.gstatic.com;
 - Container-based deployment (Docker)
 - Kubernetes orchestration
 - CDN implementation for global performance
-- Advanced security scanning and monitoring
 
 ---
 

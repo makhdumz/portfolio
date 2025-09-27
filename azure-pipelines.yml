@@ -1,21 +1,87 @@
+# Pipeline: Terraform infra + Build/Push only
+
 trigger:
-- master
+- main
 
 pool:
   vmImage: ubuntu-latest
 
-steps:
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Build.SourcesDirectory)'
-    includeRootFolder: false
-    archiveType: 'zip'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
-    replaceExistingArchive: true
+variables:
+  # Define variables for ACR
+  acrName: 'portfolioregistrytf020qrb'
+  imageName: 'portfolio-site'
+  imageTag: 'latest'
 
-- task: AzureWebApp@1
-  inputs:
-    azureSubscription: 'Dev-Portal'
-    appName: 'portfolio-demo'
-    appType: 'webAppLinux'
-    package: '$(Build.ArtifactStagingDirectory)/*.zip'
+stages:
+# Stage 1: Terraform infra
+- stage: DeployInfrastructure
+  displayName: 'Deploy Terraform Infrastructure'
+  jobs:
+  - job: Terraform
+    displayName: 'Run Terraform Apply'
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: 'Dev-Portal'
+        backendAzureRmResourceGroupName: 'low'
+        backendAzureRmStorageAccountName: 'portfoliotfstate2024'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'portfolio.tfstate'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        commandOptions: '-auto-approve'
+        environmentServiceNameAzureRM: 'Dev-Portal'
+
+    # Capture Terraform outputs
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform output'
+      inputs:
+        provider: 'azurerm'
+        command: 'output'
+        environmentServiceNameAzureRM: 'Dev-Portal'
+      name: 'terraformOutput'
+
+# Stage 2: Build and Push container (no deploy)
+- stage: BuildAndPush
+  displayName: 'Build and Push Image'
+  dependsOn: DeployInfrastructure
+  jobs:
+  - job: Docker
+    displayName: 'Build and Push'
+    steps:
+    # Method 1: Using Azure CLI to login to ACR (Recommended)
+    - task: AzureCLI@2
+      displayName: 'Login to ACR via Azure CLI'
+      inputs:
+        azureSubscription: 'Dev-Portal'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Login to ACR
+          az acr login --name $(acrName)
+          
+          # Build and push image
+          docker build -t $(acrName).azurecr.io/$(imageName):$(imageTag) .
+          docker push $(acrName).azurecr.io/$(imageName):$(imageTag)
+
+    # Alternative Method 2: Using Docker task with proper service connection
+    # Uncomment this section if you prefer using Docker tasks
+    # - task: Docker@2
+    #   displayName: 'Build and Push Image to ACR'
+    #   inputs:
+    #     command: 'buildAndPush'
+    #     containerRegistry: 'Dev-Portal'  # Use the same service connection as Terraform
+    #     repository: '$(imageName)'
+    #     dockerfile: '**/Dockerfile'
+    #     tags: '$(imageTag)'
