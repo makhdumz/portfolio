@@ -1,54 +1,65 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~>3.0"
-    }
-  }
-}
+# Pipeline: Terraform infra + Build, Push, Deploy
 
-provider "azurerm" {
-  features {}
-}
+trigger:
+- main
 
-# Use your existing Resource Group named "low"
-data "azurerm_resource_group" "rg" {
-  name = "low"
-}
+pool:
+  vmImage: ubuntu-latest
 
-# App Service Plan (Linux Free F1)
-resource "azurerm_service_plan" "plan" {
-  name                = "portfolio-plan"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-  os_type             = "Linux"
-  sku_name            = "F1"
-}
+stages:
+# Stage 1: Terraform infra
+- stage: DeployInfrastructure
+  displayName: 'Deploy Terraform Infrastructure'
+  jobs:
+  - job: Terraform
+    displayName: 'Run Terraform Apply'
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: 'Dev-Portal'
+        backendAzureRmResourceGroupName: 'low'
+        backendAzureRmStorageAccountName: 'youruniquestorageaccountname'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'portfolio.tfstate'
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        commandOptions: '-auto-approve'
+        environmentServiceNameAzureRM: 'Dev-Portal'
 
-# Azure Container Registry
-resource "azurerm_container_registry" "acr" {
-  name                = "portfolioregistrytf020qrb"
-  resource_group_name = data.azurerm_resource_group.rg.name
-  location            = data.azurerm_resource_group.rg.location
-  sku                 = "Basic"
-  admin_enabled       = true
-}
+# Stage 2: Build, Push and Deploy container
+- stage: BuildPushAndDeploy
+  displayName: 'Build, Push, and Deploy Image'
+  dependsOn: DeployInfrastructure
+  jobs:
+  - job: Docker
+    displayName: 'Build, Push and Deploy'
+    steps:
+    - task: Docker@2
+      displayName: 'Login to ACR'
+      inputs:
+        command: 'login'
+        containerRegistry: 'Docker Reg'
 
-# Linux Web App running a Docker container
-resource "azurerm_linux_web_app" "webapp" {
-  name                = "portfolio-demo"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-  service_plan_id     = azurerm_service_plan.plan.id
+    - task: Docker@2
+      displayName: 'Build and Push Image to ACR'
+      inputs:
+        command: 'buildAndPush'
+        repository: 'portfolio-site'
+        dockerfile: '**/Dockerfile'
+        tags: 'latest'
 
-  site_config {
-    always_on = false
-  }
-
-  app_settings = {
-    "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.acr.login_server}"
-    "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
-    "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
-    "WEBSITES_PORT"                   = "80"
-  }
-}
+    - task: AzureWebAppContainer@1
+      displayName: 'Deploy Container to App Service'
+      inputs:
+        azureSubscription: 'Dev-Portal'
+        appName: 'portfolio-demo'
+        imageName: 'portfolioregistrytf020qrb.azurecr.io/portfolio-site:latest'
