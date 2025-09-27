@@ -34,7 +34,7 @@ resource "azurerm_container_registry" "acr" {
   admin_enabled       = true
 }
 
-# Linux Web App (without container image)
+# Linux Web App configured to run the container
 resource "azurerm_linux_web_app" "webapp" {
   name                = "portfolio-demo"
   location            = data.azurerm_resource_group.rg.location
@@ -42,11 +42,12 @@ resource "azurerm_linux_web_app" "webapp" {
   service_plan_id     = azurerm_service_plan.plan.id
 
   site_config {
-    always_on = false
+    always_on        = false
+    linux_fx_version = "DOCKER|${azurerm_container_registry.acr.login_server}/portfolio-site:latest"
   }
 
   app_settings = {
-    "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.acr.login_server}"
+    "DOCKER_REGISTRY_SERVER_URL"      = "https://{azurerm_container_registry.acr.login_server}"
     "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
     "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
     "WEBSITES_PORT"                   = "80"
