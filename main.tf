@@ -42,8 +42,12 @@ resource "azurerm_linux_web_app" "webapp" {
   service_plan_id     = azurerm_service_plan.plan.id
 
   site_config {
-    always_on        = false
-    linux_fx_version = "DOCKER|${azurerm_container_registry.acr.login_server}/portfolio-site:latest"
+    always_on = false
+    
+    application_stack {
+      docker_image     = "${azurerm_container_registry.acr.login_server}/portfolio-site"
+      docker_image_tag = "latest"
+    }
   }
 
   app_settings = {
