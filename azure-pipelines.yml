@@ -1,4 +1,4 @@
-# This is the full and final pipeline configuration using best practices.
+# Pipeline: Terraform infra + Build, Push, Deploy
 
 trigger:
 - main
@@ -7,45 +7,35 @@ pool:
   vmImage: ubuntu-latest
 
 stages:
-# STAGE 1: DEPLOY INFRASTRUCTURE
-# This stage uses the dedicated Terraform tasks to build your resources.
+# Stage 1: Terraform infra
 - stage: DeployInfrastructure
   displayName: 'Deploy Terraform Infrastructure'
   jobs:
   - job: Terraform
     displayName: 'Run Terraform Apply'
     steps:
-    # Task 1: Install a specific version of Terraform
     - task: TerraformInstaller@1
-      displayName: 'Install Terraform'
       inputs:
         terraformVersion: 'latest'
-
-    # Task 2: Run Terraform init with a remote state backend
-    # This securely initializes Terraform and connects to your Azure credentials.
     - task: TerraformTaskV4@4
       displayName: 'Terraform init'
       inputs:
         provider: 'azurerm'
         command: 'init'
-        backendServiceArm: 'Dev-Portal' # Your main Azure Service Connection
-        backendAzureRmResourceGroupName: 'low' # The RG where the state is stored
-        backendAzureRmStorageAccountName: 'youruniquestorageaccountname' # <-- IMPORTANT: CHANGE THIS
-        backendAzureRmContainerName: 'tfstate' # The container name for the state file
-        backendAzureRmKey: 'portfolio.tfstate' # The name of the state file
-
-    # Task 3: Run Terraform apply
-    # This applies the changes to your infrastructure.
+        backendServiceArm: 'Dev-Portal'
+        backendAzureRmResourceGroupName: 'low'
+        backendAzureRmStorageAccountName: 'youruniquestorageaccountname'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'portfolio.tfstate'
     - task: TerraformTaskV4@4
       displayName: 'Terraform apply'
       inputs:
         provider: 'azurerm'
         command: 'apply'
         commandOptions: '-auto-approve'
-        environmentServiceNameAzureRM: 'Dev-Portal' # Your main Azure Service Connection
+        environmentServiceNameAzureRM: 'Dev-Portal'
 
-# STAGE 2: BUILD, PUSH, AND DEPLOY CONTAINER
-# This stage builds your Docker image and deploys it to the Web App.
+# Stage 2: Build, Push and Deploy container
 - stage: BuildPushAndDeploy
   displayName: 'Build, Push, and Deploy Image'
   dependsOn: DeployInfrastructure
@@ -57,7 +47,7 @@ stages:
       displayName: 'Login to ACR'
       inputs:
         command: 'login'
-        containerRegistry: 'Docker Reg' # Your Docker Registry service connection
+        containerRegistry: 'Docker Reg'
 
     - task: Docker@2
       displayName: 'Build and Push Image to ACR'
@@ -70,6 +60,6 @@ stages:
     - task: AzureWebAppContainer@1
       displayName: 'Deploy Container to App Service'
       inputs:
-        azureSubscription: 'Dev-Portal' # Your Azure service connection
+        azureSubscription: 'Dev-Portal'
         appName: 'portfolio-demo'
         imageName: 'portfolioregistrytf020qrb.azurecr.io/portfolio-site:latest'
